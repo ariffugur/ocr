@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>NutriFlow — Ürün Tarayıcı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F3F6F1;
+    --surface: #FFFFFF;
+    --ink: #21241F;
+    --ink-soft: #5B6259;
+    --forest: #1F3A2E;
+    --leaf: #3F7D53;
+    --gold: #C7932F;
+    --clay: #B5563C;
+    --line: #E1E6DC;
+    --radius: 18px;
+  }
+  *{ box-sizing: border-box; }
+  html,body{
+    margin:0; padding:0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body{
+    min-height: 100vh;
+    display:flex; flex-direction:column;
+    padding: 28px 20px 40px;
+  }
+  header{
+    display:flex; flex-direction:column; gap:4px;
+    margin-bottom: 24px;
+  }
+  .brand{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size: 28px;
+    color: var(--forest);
+    letter-spacing: -0.01em;
+  }
+  .subtitle{
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+  main{ flex:1; display:flex; flex-direction:column; gap: 18px; max-width: 480px; margin: 0 auto; width:100%; }
+
+  .camera-wrap{
+    position: relative;
+    background: var(--forest);
+    border-radius: var(--radius);
+    overflow: hidden;
+    aspect-ratio: 3 / 4;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .camera-wrap video{
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+  .camera-wrap.active video{ display:block; }
+
+  .camera-start{
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+    color: white; text-align:center; padding: 0 24px;
+  }
+  .camera-wrap.active .camera-start{ display:none; }
+
+  .start-btn{
+    width: 68px; height: 68px;
+    border-radius: 50%;
+    background: white;
+    border: none;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .start-btn svg{ width: 28px; height:28px; }
+  .start-label{ font-size: 13px; color: rgba(255,255,255,0.75); max-width: 220px; }
+
+  .scan-hud{
+    position:absolute; top:14px; left:14px; right:14px;
+    display:none;
+    align-items:center; justify-content:space-between;
+    z-index: 2;
+  }
+  .camera-wrap.active .scan-hud{ display:flex; }
+
+  .scan-pulse{
+    display:flex; align-items:center; gap:6px;
+    background: rgba(0,0,0,0.35);
+    color:white; font-size: 12px; font-weight:600;
+    padding: 6px 10px; border-radius: 999px;
+  }
+  .dot{
+    width:8px; height:8px; border-radius:50%;
+    background: #6FE28C;
+    animation: pulse 1.1s infinite ease-in-out;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity:1; transform: scale(1); }
+    50%{ opacity:.4; transform: scale(0.7); }
+  }
+  .stop-btn{
+    background: rgba(0,0,0,0.35);
+    color:white; border:none;
+    font-size: 12px; font-weight:600;
+    padding: 6px 12px; border-radius: 999px;
+    cursor:pointer;
+  }
+
+  .frame-guides{
+    position:absolute; inset: 18% 10%;
+    border: 2px dashed rgba(255,255,255,0.55);
+    border-radius: 14px;
+    display:none;
+    pointer-events:none;
+  }
+  .camera-wrap.active .frame-guides{ display:block; }
+
+  .divider{
+    display:flex; align-items:center; gap:10px;
+    color: var(--ink-soft); font-size: 13px;
+    margin: 2px 0;
+  }
+  .divider::before, .divider::after{
+    content:''; flex:1; height:1px; background: var(--line);
+  }
+
+  .manual-search{
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    padding: 18px 20px;
+    display:flex; gap:10px;
+  }
+  .manual-search input{
+    flex:1;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 15px;
+    font-family: inherit;
+    background: var(--bg);
+    color: var(--ink);
+  }
+  .manual-search input:focus{ outline: 2px solid var(--leaf); outline-offset: 1px; }
+  .manual-search button{
+    background: var(--forest);
+    color: white;
+    border:none;
+    border-radius: 12px;
+    padding: 0 18px;
+    font-size: 14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+
+  #status{
+    min-height: 20px;
+    font-size: 14px;
+    color: var(--ink-soft);
+    text-align:center;
+  }
+
+  .result-card{
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--leaf);
+    padding: 22px;
+    display:none;
+    animation: rise .25s ease;
+  }
+  .result-card.show{ display:block; }
+  .result-card.status-vegan{ border-left-color: var(--leaf); }
+  .result-card.status-vejetaryen{ border-left-color: var(--gold); }
+  .result-card.status-uygun-degil{ border-left-color: var(--clay); }
+
+  .result-title{
+    font-family:'Fraunces', serif;
+    font-weight: 600;
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+  .result-status{
+    display:inline-block;
+    font-size: 13px;
+    font-weight:600;
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-bottom: 14px;
+  }
+  .status-vegan .result-status{ background: rgba(63,125,83,0.14); color: var(--leaf); }
+  .status-vejetaryen .result-status{ background: rgba(199,147,47,0.16); color: var(--gold); }
+  .status-uygun-degil .result-status{ background: rgba(181,86,60,0.14); color: var(--clay); }
+
+  .result-grid{
+    display:grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  .result-item{ display:flex; flex-direction:column; gap:2px; }
+  .result-item .label{ font-size: 12px; color: var(--ink-soft); }
+  .result-item .value{ font-size: 15px; font-weight:600; }
+
+  .rescan-btn{
+    margin-top: 16px;
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--forest);
+    font-weight:600;
+    font-size: 14px;
+    padding: 10px;
+    border-radius: 12px;
+    cursor:pointer;
+  }
+
+  .not-found{
+    display:none;
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px dashed var(--line);
+    padding: 20px;
+    text-align:center;
+    color: var(--ink-soft);
+    font-size: 14px;
+  }
+  .not-found.show{ display:block; }
+
+  @keyframes rise{
+    from{ opacity:0; transform: translateY(6px); }
+    to{ opacity:1; transform: translateY(0); }
+  }
+
+  footer{
+    margin-top: 32px;
+    text-align:center;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">NutriFlow</div>
+  <div class="subtitle">Ürünün etiketini kameraya göster, canlı taransın</div>
+</header>
+
+<main>
+
+  <div class="camera-wrap" id="cameraWrap">
+    <video id="video" playsinline muted autoplay></video>
+
+    <div class="scan-hud">
+      <div class="scan-pulse"><span class="dot"></span>Taranıyor</div>
+      <button class="stop-btn" id="stopBtn">Durdur</button>
+    </div>
+
+    <div class="frame-guides"></div>
+
+    <div class="camera-start">
+      <button class="start-btn" id="startBtn" aria-label="Taramayı başlat">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 8a2 2 0 0 1 2-2h1.2a1 1 0 0 0 .83-.45l.94-1.4A1 1 0 0 1 9.8 3.5h4.4a1 1 0 0 1 .83.55l.94 1.4a1 1 0 0 0 .83.45H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" stroke="#1F3A2E" stroke-width="1.6"/>
+          <circle cx="12" cy="13" r="3.4" stroke="#1F3A2E" stroke-width="1.6"/>
+        </svg>
+      </button>
+      <div class="start-label">Ürün etiketini kameraya göstermek için taramayı başlat</div>
+    </div>
+  </div>
+
+  <canvas id="frameCanvas" style="display:none;"></canvas>
+
+  <div class="divider">veya ürün adını yaz</div>
+
+  <form class="manual-search" id="manualForm">
+    <input type="text" id="manualInput" placeholder="örn. bounty, cheetos, harby..." autocomplete="off" />
+    <button type="submit">Sorgula</button>
+  </form>
+
+  <div id="status"></div>
+
+  <div class="result-card" id="resultCard">
+    <div class="result-title" id="resultTitle"></div>
+    <span class="result-status" id="resultStatus"></span>
+    <div class="result-grid">
+      <div class="result-item">
+        <span class="label">Gramaj</span>
+        <span class="value" id="resultGramaj"></span>
+      </div>
+      <div class="result-item">
+        <span class="label">Kalori</span>
+        <span class="value" id="resultKalori"></span>
+      </div>
+      <div class="result-item">
+        <span class="label">Protein</span>
+        <span class="value" id="resultProtein"></span>
+      </div>
+      <div class="result-item">
+        <span class="label">Gluten</span>
+        <span class="value" id="resultGluten"></span>
+      </div>
+    </div>
+    <button class="rescan-btn" id="rescanBtn">Yeniden Tara</button>
+  </div>
+
+  <div class="not-found" id="notFound">
+    Ürün tanınamadı. Etiketi çerçevenin içine, iyi ışıkta göster ya da adını yazarak ara.
+  </div>
+
+</main>
+
+<footer>NutriFlow demo — 168 ürünlük veri seti üzerinde çalışır</footer>
+
+<script>
+  const cameraWrap = document.getElementById('cameraWrap');
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('frameCanvas');
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const rescanBtn = document.getElementById('rescanBtn');
+  const statusEl = document.getElementById('status');
+  const resultCard = document.getElementById('resultCard');
+  const notFoundEl = document.getElementById('notFound');
+  const manualForm = document.getElementById('manualForm');
+  const manualInput = document.getElementById('manualInput');
+
+  let whitelist = [];
+  let stream = null;
+  let scanLoopActive = false;
+  let ocrBusy = false;
+  // Android'deki "resultFound" bayrağının web karsiligi: bir eslesme
+  // bulunduktan sonra tarama dongusu durur, yeni bir kare islenmez.
+  let resultFound = false;
+
+  // OCR icin makul bir hedef genislik: cok kucuk => kucuk yazi okunamaz,
+  // cok buyuk => hem yukleme hem OCR.space tarafinda islem yavaslar.
+  const OCR_TARGET_WIDTH = 700;
+  // Aramalar arasindaki minimum bosluk (ms). Artik OCR sunucuda (OCR.space)
+  // calisiyor, yani her karede bir agdan gidip gelme suresi var - bu yuzden
+  // bosluk, tarayicida calisan Tesseract'a gore daha uzun tutuldu; hem
+  // gereksiz istek/kota tuketimini hem de ust uste binmeyi engelliyor.
+  const SCAN_GAP_MS = 1200;
+  // Canvas -> JPEG cevrimindeki kalite. Dusuk kalite = daha kucuk base64
+  // yuku = daha hizli yukleme, ama cok dusuk olursa OCR dogrulugu duser.
+  const JPEG_QUALITY = 0.7;
+
+  fetch('/api/products')
+    .then(r => r.json())
+    .then(data => { whitelist = data.urunler || []; })
+    .catch(() => { statusEl.textContent = 'Ürün listesi yüklenemedi.'; });
+
+  function normalize(text){
+    return (text || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  function findMatch(rawText){
+    const text = normalize(rawText);
+    return whitelist.find(term => term && text.includes(term)) || null;
+  }
+
+  function hideResults(){
+    resultCard.classList.remove('show');
+    notFoundEl.classList.remove('show');
+  }
+
+  function showNotFound(){
+    hideResults();
+    notFoundEl.classList.add('show');
+  }
+
+  function showResult(product){
+    hideResults();
+    document.getElementById('resultTitle').textContent = product.urunAdi;
+    document.getElementById('resultStatus').textContent = product.veg;
+    document.getElementById('resultGramaj').textContent = product.gramaj || '—';
+    document.getElementById('resultKalori').textContent = (product.kalori || '—') + ' kcal';
+    document.getElementById('resultProtein').textContent = (product.protein || '—') + ' gr';
+    document.getElementById('resultGluten').textContent = product.gluten || '—';
+
+    const statusClass = 'status-' + normalize(product.veg).replace(/\s+/g, '-').replace(/ı/g, 'i');
+    resultCard.className = 'result-card show ' + statusClass;
+  }
+
+  async function startScanning(){
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          // Kamera cozunurlugunu talep ederken sinirla: gereksiz yuksek
+          // cozunurluk hem drawImage'i hem OCR'i yavaslatir.
+          width: { ideal: 960 },
+          height: { ideal: 1280 },
+        }
+      });
+    } catch(err){
+      statusEl.textContent = 'Kameraya erişilemedi. İzinleri kontrol et.';
+      return;
+    }
+
+    video.srcObject = stream;
+    await video.play();
+    cameraWrap.classList.add('active');
+    resultFound = false;
+    hideResults();
+    statusEl.textContent = '';
+
+    scanLoopActive = true;
+    scheduleNextCapture();
+  }
+
+  function stopScanning(){
+    scanLoopActive = false;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    cameraWrap.classList.remove('active');
+    statusEl.textContent = '';
+  }
+
+  function scheduleNextCapture(){
+    if (!scanLoopActive) return;
+    setTimeout(async () => {
+      await captureAndRecognize();
+      scheduleNextCapture();
+    }, SCAN_GAP_MS);
+  }
+
+  // Ekrandaki kirpma cercevesiyle (.frame-guides, inset: 18% 10%) ayni
+  // orana denk gelen bolgeyi videodan kirpar. Boylece hem OCR'a daha az
+  // piksel gider (hizli) hem de sadece kullanicinin gosterdigi alan
+  // okunur (daha dogru). Sonra gerekirse OCR_TARGET_WIDTH'e kadar
+  // kucultup isi daha da hizlandirir.
+  function captureCroppedFrame(){
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    const sx = vw * 0.10;
+    const sy = vh * 0.18;
+    const sw = vw * 0.80;
+    const sh = vh * 0.64;
+
+    const scale = Math.min(1, OCR_TARGET_WIDTH / sw);
+    canvas.width = Math.round(sw * scale);
+    canvas.height = Math.round(sh * scale);
+
+    const ctx = canvas.getContext('2d');
+    // Gri tonlama + kontrast: metni arka plandan ayirmayi kolaylastirir,
+    // maliyeti ihmal edilebilir (GPU hizlandirmali canvas filtresi).
+    ctx.filter = 'grayscale(1) contrast(1.3)';
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    return canvas;
+  }
+
+  async function captureAndRecognize(){
+    if (ocrBusy || resultFound || !video.videoWidth) return;
+    ocrBusy = true;
+
+    try{
+      const frame = captureCroppedFrame();
+      const imageDataUrl = frame.toDataURL('image/jpeg', JPEG_QUALITY);
+
+      const res = await fetch('/api/ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageDataUrl })
+      });
+      const data = await res.json();
+      if (resultFound) { ocrBusy = false; return; }
+
+      if (data.error) {
+        // OCR.space tarafinda gecici bir hata olabilir (kota, ag vs.)
+        // - sessizce devam et, bir sonraki karede yeniden dene.
+        ocrBusy = false;
+        return;
+      }
+
+      const match = findMatch(data.text);
+      if (match) {
+        resultFound = true;
+        scanLoopActive = false;
+        stream.getTracks().forEach(t => t.stop());
+        cameraWrap.classList.remove('active');
+        await checkSorgu(match);
+      }
+    } catch(err){
+      // Ag hatasi vs. olursa sessizce devam et, bir sonraki karede yeniden dene
+    }
+    ocrBusy = false;
+  }
+
+  async function checkSorgu(sorgu){
+    statusEl.textContent = 'Sorgulanıyor...';
+    try{
+      const res = await fetch('/api/check-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sorgu })
+      });
+      const data = await res.json();
+      statusEl.textContent = '';
+      if (data.found) {
+        showResult(data.product);
+      } else {
+        showNotFound();
+      }
+    } catch(err){
+      statusEl.textContent = 'Sunucuya bağlanılamadı.';
+    }
+  }
+
+  startBtn.addEventListener('click', startScanning);
+  stopBtn.addEventListener('click', stopScanning);
+
+  rescanBtn.addEventListener('click', () => {
+    hideResults();
+    startScanning();
+  });
+
+  manualForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = manualInput.value.trim();
+    if (!val) return;
+    checkSorgu(val);
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopScanning();
+  });
+</script>
+
+</body>
+</html>
